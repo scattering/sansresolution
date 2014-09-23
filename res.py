@@ -280,7 +280,7 @@ def pinhole(pixel_i, pixel_j, pixel_width=5, pixel_height=5,
             source_aperture=50, sample_aperture=12,
             source_distance=8500, detector_distance=4000,
             wavelength=8, wavelength_resolution=0.12, aligned_wavelength=8,
-            N=5000):
+            N=5000, phi_mask=5.8):
     Rsource = source_aperture/2
     Rsample = sample_aperture/2
     Dsource = source_distance
@@ -442,28 +442,36 @@ def pinhole(pixel_i, pixel_j, pixel_width=5, pixel_height=5,
         stats = np.array(stats)
         plt.suptitle(config)
         plt.subplot(131)
-        data = stats[:,2]
+        data,title = stats[:,2], r"$\Delta\theta$"
+        mask =  (PI**2+PJ**2<phi_mask**2)
+        data = np.ma.array(data, mask=mask)
+        #data,title = stats[:,1]-stats[:,0], r"$\theta - \hat\theta$"
         #data = np.clip(stats[:,1]-stats[:,0], 0, 0.02)
         plt.pcolormesh(pixel_i, pixel_j, data.reshape(len(pixel_i),len(pixel_j)))
         plt.grid(True)
         plt.axis('equal')
-        plt.title("theta width")
+        plt.title(title)
         plt.colorbar()
         plt.subplot(132)
-        data = stats[:,5]
-        #data = np.clip(stats[:,4]-stats[:,3], -.1, .1)
+        data,title = stats[:,5], r"$\Delta\phi$"
+        #data,title = stats[:,4]-stats[:,3], r"$\phi - \hat\phi$"
+        mask =  (PI<phi_mask) & (abs(PJ)<phi_mask)
+        data = np.ma.array(data, mask=mask)
         plt.pcolormesh(pixel_i, pixel_j, data.reshape(len(pixel_i),len(pixel_j)))
         plt.grid(True)
         plt.axis('equal')
-        plt.title("phi width")
+        plt.title(title)
         plt.colorbar()
         plt.subplot(133)
-        data = stats[:,8]
+        data,title = stats[:,8], r"$\Delta q$"
+        mask =  (PI**2+PJ**2<phi_mask**2)
+        data = np.ma.array(data, mask=mask)
+        #data,title = stats[:,7]-stats[:,6], r"$q - \hat q$"
         #data = np.clip(stats[:,7]-stats[:,6], 0, 0.0005)
         plt.pcolormesh(pixel_i, pixel_j, data.reshape(len(pixel_i),len(pixel_j)))
         plt.grid(True)
         plt.axis('equal')
-        plt.title("q width")
+        plt.title(title)
         plt.colorbar()
 
 
@@ -502,10 +510,10 @@ if __name__ == "__main__":
     # ==== select detector portion
     if 1:
         # various detector regions
-        #i,j = np.arange(-63.5,64), np.arange(-63.5,64) # full detector SLOW!!!
-        #i,j = np.arange(-63.5,64,4), np.arange(-63.5,64,4) # down sampled
-        i,j = np.arange(3.5, 64), [0] # horizontal line
-        #i,j = [0], np.arange(3.5, 64) # vertical line
+        #i=j=np.arange(-63.5,64) # full detector SLOW!!!
+        #i=j=np.arange(-63.5,64,4) # down sampled
+        #i,j = np.arange(3.5, 64), [0] # horizontal line
+        i,j = [0], np.arange(3.5, 64) # vertical line
         #i,j = [6],[6]  # low Q point
         #i,j = [45],[45]  # high Q point
         plt.figure(); pinhole(i,j,N=N,**geom)
