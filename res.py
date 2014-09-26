@@ -37,7 +37,9 @@ a beam of neutrons of the alignment wavelength will be centered on
 the detector.  The aperture is not readjusted when changing wavelengths, 
 which will result in a main beam that is slightly above $(0,0)$ for
 shorter wavelengths, or below for longer wavelengths.  At 14m, changing
-from 8 A to 16 A will drop the beam by 10 pixels or so.
+from 8 A to 16 A will drop the beam by 10 pixels or so.  Since data
+reduction will recenter $(q_x,q_y)$ on the detector position, the
+detector is shifted so that the center pixel is at $q=0$.
 
 After filtering through the sample aperture, we are left with a 
 selection neutrons at position $(s_x, s_y)$ and angle
@@ -237,8 +239,9 @@ def aperture_alignment(wavelength, aligned_wavelength, Dsource, Ddetector):
     # drop proportional to the distance travelled.  We can set the elevation
     # required to hit the target based on this distance.  We will add this
     # correction to all elevations.
+    Ddetector += Dsource
     aligned_velocity = to_velocity(aligned_wavelength) # m/s
-    el = 0.5*arcsin(earth_gravity*0.001*(Dsource+Ddetector)/aligned_velocity**2)
+    el = 0.5*arcsin(earth_gravity*0.001*(Ddetector)/aligned_velocity**2)
 
     velocity = to_velocity(wavelength) # m/s
     # We need to shift the sample aperture into the ballistic trajectory by
@@ -246,7 +249,12 @@ def aperture_alignment(wavelength, aligned_wavelength, Dsource, Ddetector):
     y = Dsource*tan(el) \
         - 1000*0.5*earth_gravity*(0.001*Dsource/(velocity*cos(el)))**2
 
-    return el, y
+    # We need to compute the position p where the direct beam will encounter
+    # the detector.
+    p = Ddetector*tan(el) \
+        - 1000*0.5*earth_gravity*(0.001*Ddetector/(velocity*cos(el)))**2
+
+    return el, y, p
 
 def nominal_q(sx, sy, az_in, el_in, az_out, el_out, dz):
     nx, ny = sx + dz * tan(az_in), sy + dz * tan(el_in)
@@ -280,7 +288,7 @@ def pinhole(pixel_i, pixel_j, pixel_width=5, pixel_height=5,
             source_aperture=50, sample_aperture=12,
             source_distance=8500, detector_distance=4000,
             wavelength=8, wavelength_resolution=0.12, aligned_wavelength=8,
-            N=5000, phi_mask=5.8):
+            N=5000, phi_mask=7.1):
     Rsource = source_aperture/2
     Rsample = sample_aperture/2
     Dsource = source_distance
@@ -319,7 +327,8 @@ def pinhole(pixel_i, pixel_j, pixel_width=5, pixel_height=5,
         # gravity calculations work better with azimuth and elevation
         az, el = theta*cos(phi), theta*sin(phi)
 
-        delta_el, delta_y = aperture_alignment(wavelength, aligned_wavelength,
+        delta_el, delta_y, delta_p \
+                = aperture_alignment(wavelength, aligned_wavelength,
                                                Dsource, Ddetector)
         el += delta_el
 
@@ -347,7 +356,7 @@ def pinhole(pixel_i, pixel_j, pixel_width=5, pixel_height=5,
         # ==== Compute scattering theta, phi for pixel ====
         # find random point in pixel i,j to scatter to
         xl,xu = (p_i-0.5)*pixel_width, (p_i+0.5)*pixel_width
-        yl,yu = (p_j-0.5)*pixel_height, (p_j+0.5)*pixel_height
+        yl,yu = delta_p+(p_j-0.5)*pixel_height, delta_p+(p_j+0.5)*pixel_height
         p_x,p_y = rand(len(s_x))*(xu-xl)+xl, rand(len(s_x))*(yu-yl)+yl
         #plot(px,py,"px,py pixel locations"); return
 
@@ -463,7 +472,8 @@ def pinhole(pixel_i, pixel_j, pixel_width=5, pixel_height=5,
         plt.title(title)
         plt.colorbar()
         plt.subplot(133)
-        data,title = stats[:,8], r"$\Delta q$"
+        #data,title = stats[:,8], r"$\Delta q$"
+        data,title = stats[:,8]/stats[:,6], r"$\Delta q/q$"
         mask =  (PI**2+PJ**2<phi_mask**2)
         data = np.ma.array(data, mask=mask)
         #data,title = stats[:,7]-stats[:,6], r"$q - \hat q$"
@@ -504,16 +514,16 @@ if __name__ == "__main__":
     #geom["aligned_wavelength"] = geom["wavelength"] = 0.001
 
     # ==== select precision
-    N = 1000000 # high precision
-    #N = 100000 # low precision
+    #N = 1000000 # high precision
+    N = 100000 # low precision
 
     # ==== select detector portion
     if 1:
         # various detector regions
         #i=j=np.arange(-63.5,64) # full detector SLOW!!!
         #i=j=np.arange(-63.5,64,4) # down sampled
-        #i,j = np.arange(3.5, 64), [0] # horizontal line
-        i,j = [0], np.arange(3.5, 64) # vertical line
+        i,j = np.arange(3.5, 64), [0] # horizontal line
+        #i,j = [0], np.arange(3.5, 64) # vertical line
         #i,j = [6],[6]  # low Q point
         #i,j = [45],[45]  # high Q point
         plt.figure(); pinhole(i,j,N=N,**geom)
