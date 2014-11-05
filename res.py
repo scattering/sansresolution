@@ -283,14 +283,19 @@ def nominal_q(sx, sy, az_in, el_in, az_out, el_out, dz):
 
     return theta, phi
 
+def resolution(R1,R2,D1,D2,dx,dy,L,dL):
+    dQx = sqrt( (2*pi/(L*D2))**2
+
 # All lengths are in millimeters
 def pinhole(pixel_i, pixel_j, pixel_width=5, pixel_height=5,
-            source_aperture=50, sample_aperture=12,
+            source_aperture=50.8, sample_aperture=12.7,
             source_distance=8500, detector_distance=4000,
+            beamstop=50.8,
             wavelength=8, wavelength_resolution=0.12, aligned_wavelength=8,
             N=5000, phi_mask=7.1):
     Rsource = source_aperture/2
     Rsample = sample_aperture/2
+    Rstop = beamstop/2
     Dsource = source_distance
     Ddetector = detector_distance
 
@@ -399,8 +404,9 @@ def pinhole(pixel_i, pixel_j, pixel_width=5, pixel_height=5,
             qperp_nominal, qperp_mean, qperp_std,
             ])
 
-    config = "Rsrc:%.1fcm Rsamp:%.1fcm Dsrc:%.1fm Ddet:%.1fm L:%.1fA" %(
-            Rsource, Rsample, Dsource/1000, Ddetector/1000, wavelength)
+    config = "src-ap:%.1fcm samp-ap:%.1fcm src-dist:%.1fm det-dist:%.1fm L:%.1fA" % (
+            source_aperture/10, sample_aperture/10, 
+            Dsource/1000, Ddetector/1000, wavelength)
     if len(stats) == 1:
         # print stats
         pixel_config = "%s pixel:%d,%d (%dX%d mm^2)" %(
@@ -430,23 +436,23 @@ def pinhole(pixel_i, pixel_j, pixel_width=5, pixel_height=5,
         plt.subplot(221)
         plt.plot(stats[:,6], stats[:,2], '.')
         plt.grid(True)
-        plt.xlabel('Q (1/A)')
-        plt.ylabel('theta width')
+        plt.xlabel(r'$Q (1/A)$')
+        plt.ylabel(r'$\Delta\theta$')
         plt.subplot(222)
         plt.plot(stats[:,6], stats[:,5], '.')
         plt.grid(True)
-        plt.xlabel('Q (1/A)')
-        plt.ylabel('phi width')
+        plt.xlabel(r'$Q (1/A)$')
+        plt.ylabel(r'$\Delta\phi$')
         plt.subplot(223)
         plt.plot(stats[:,6], stats[:,8], '.')
         plt.grid(True)
-        plt.xlabel('Q (1/A)')
-        plt.ylabel('Q parallel width')
+        plt.xlabel(r'$Q (1/A)$')
+        plt.ylabel(r'$\Delta Q_\parallel$')
         plt.subplot(224)
         plt.plot(stats[:,6], stats[:,11], '.')
         plt.grid(True)
-        plt.xlabel('Q (1/A)')
-        plt.ylabel('Q perpendicular width')
+        plt.xlabel(r'$Q (1/A)$')
+        plt.ylabel(r'$\Delta Q_\perp$')
     else:
         stats = np.array(stats)
         plt.suptitle(config)
@@ -501,12 +507,13 @@ if __name__ == "__main__":
     # ==== select Q range
     fields = ("source_distance","detector_distance",
               "source_aperture","sample_aperture",
+              "beamstop",
               "wavelength","wavelength_resolution")
     values = (
-        #16270,13170,14.3,12.7,13,0.109  # 13m @ 13A max resolution
-         15727,14547,38.0,12.7, 6,0.124  # 14.5m @ 6A low Q
-        #10070, 4050,50.0,12.7, 8,0.125  # 4m @ 8A
-        # 3870, 1380,50.0,12.7, 6,0.236  # 1.3m @ 6A max flux
+        #16270,13170, 28.6,25.4,50.8,13,0.109  # 13m @ 13A max resolution
+         15727,14547, 76.0,25.4,50.8, 6,0.124  # 14.5m @ 6A low Q
+        #10070, 4050,100.0,25.4,50.8, 8,0.125  # 4m @ 8A
+        # 3870, 1380,100.0,25.4,50.8, 6,0.236  # 1.3m @ 6A max flux
     )
     geom = dict(zip(fields,values))
 
@@ -539,5 +546,7 @@ if __name__ == "__main__":
         plt.figure(); pinhole([20],[0],N=N,**geom)
         #plt.figure(); pinhole([40],[0],N=N,**geom)
         plt.figure(); pinhole([60],[0],N=N,**geom)
+        #plt.figure(); pinhole([0],[60],N=N,**geom)
+        #plt.figure(); pinhole([0],[-60],N=N,**geom)
 
     plt.show()
