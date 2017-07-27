@@ -24,24 +24,24 @@ The first step is to generate a set of neutrons at small angle $\theta$
 along the direction of the beam, and uniform phi, with starting position
 $(x,y)$ in the source aperture.  Each neutron is given an independent
 wavelength $\lambda$ from a triangular distribution resulting from the
-upstream velocity selector.  The $\theta$ range is determined by the 
-distance between the source aperture and the sample aperture, with 
+upstream velocity selector.  The $\theta$ range is determined by the
+distance between the source aperture and the sample aperture, with
 extra radius to account for finite aperture size and gravity effects.
 
 The $(\theta, \phi)$ spherical coordinates used to generate the initial
 neutron population are converted to $(\theta_{\rm az}, \theta_{\rm el})
 to make gravity effects easier to calculate.
 
-The sample aperture is shifted slightly upward from $(0,0)$ so that 
-a beam of neutrons of the alignment wavelength will be centered on 
-the detector.  The aperture is not readjusted when changing wavelengths, 
+The sample aperture is shifted slightly upward from $(0,0)$ so that
+a beam of neutrons of the alignment wavelength will be centered on
+the detector.  The aperture is not readjusted when changing wavelengths,
 which will result in a main beam that is slightly above $(0,0)$ for
 shorter wavelengths, or below for longer wavelengths.  At 14m, changing
 from 8 A to 16 A will drop the beam by 10 pixels or so.  Since data
 reduction will recenter $(q_x,q_y)$ on the detector position, the
 detector is shifted so that the center pixel is at $q=0$.
 
-After filtering through the sample aperture, we are left with a 
+After filtering through the sample aperture, we are left with a
 selection neutrons at position $(s_x, s_y)$ and angle
 $(s_{\rm az}, s_{\rm el})$ incident on the sample.  For each
 source neutron, we generate a random position $(p_x, p_y)$ within
@@ -51,22 +51,22 @@ detector position.
 
 To determine the $(\theta,\phi)$ angle of scattering, we compare
 the position $D$ on the detector of the incident neutron travelling
-in a straight line without gravity (this is the beam center), to 
-the position $P$ on the detector of the scattered neutron travelling 
+in a straight line without gravity (this is the beam center), to
+the position $P$ on the detector of the scattered neutron travelling
 in a straight line without gravity (this is the relative $(q_x,q_y$)
 of the scattered neutron).   Given the position $S$ of the sample
 $\theta = \tan^{-1}(||Q-D||/||D-S||)$ and
 $\phi = \tan^{-1}((pn_y-d_y)/(pn_x-d_x))$.
 
-The scattering intensity $I(q)$ which we are using to compute the 
-resolution effects is only a function of angle and wavelength.  
-The gravity effect is accounted for in determining the throwing 
-angle required to reach the pixel.  
+The scattering intensity $I(q)$ which we are using to compute the
+resolution effects is only a function of angle and wavelength.
+The gravity effect is accounted for in determining the throwing
+angle required to reach the pixel.
 
 We can estimate the resolution of the pixel $(i,j)$ by looking
-at the histograms of our populations of $\theta$, $\phi$, 
+at the histograms of our populations of $\theta$, $\phi$,
 $Q_\parallel = \frac{4 \pi}{\lambda} \sin(theta/2)$
-and $Q_\perp = Q_\parallel (\phi - \bar\phi)$ where $\bar\phi$ 
+and $Q_\perp = Q_\parallel (\phi - \bar\phi)$ where $\bar\phi$
 is the nominal scattering angle of the pixel.
 
 The above $(\theta,\phi)$ calculation is slightly incorrect since
@@ -131,14 +131,14 @@ def plot(x,y,title):
     plt.title(title)
     plt.grid(True)
 
-def plot_angles(theta,phi):
+def plot_angles(theta,phi,bins=50):
     # plot angle densities
     plt.subplot(131)
-    plt.hist(theta*180/pi,bins=50)
+    plt.hist(theta*180/pi,bins=bins)
     plt.xlabel("theta (degrees)")
     plt.grid(True)
     plt.subplot(132)
-    plt.hist(phi*180/pi,bins=50)
+    plt.hist(phi*180/pi,bins=bins)
     plt.xlabel("phi (degrees)")
     plt.grid(True)
     plt.subplot(133)
@@ -147,7 +147,7 @@ def plot_angles(theta,phi):
     plt.xlabel('theta (degrees)')
     plt.ylabel('phi (degrees)')
 
-def plot_q(q, phi, title): 
+def plot_q(q, phi, title):
     plt.subplot(131)
     plt.hist(q,bins=50)
     plt.grid(True)
@@ -276,7 +276,7 @@ def nominal_q(sx, sy, az_in, el_in, az_out, el_out, dz):
 
     # Note: px,py is the location of the scattered neutron relative to the
     # beam center without gravity in detector coordinates, not the qx,qy vector
-    # in inverse coordinates.  This allows us to compute the scattered angle at 
+    # in inverse coordinates.  This allows us to compute the scattered angle at
     # the sample, returning theta and phi.
     qd = sqrt((px-nx)**2 + (py-ny)**2)
     theta, phi = arctan2(qd, nd)/2, arctan2(py-ny, px-nx)
@@ -284,7 +284,7 @@ def nominal_q(sx, sy, az_in, el_in, az_out, el_out, dz):
     return theta, phi
 
 def resolution(R1,R2,D1,D2,dx,dy,L,dL):
-    dQx = sqrt( (2*pi/(L*D2))**2
+    dQx = sqrt( (2*pi/(L*D2))**2 )
 
 # All lengths are in millimeters
 def pinhole(pixel_i, pixel_j, pixel_width=5, pixel_height=5,
@@ -295,14 +295,14 @@ def pinhole(pixel_i, pixel_j, pixel_width=5, pixel_height=5,
             N=5000, phi_mask=7.1):
     Rsource = source_aperture/2
     Rsample = sample_aperture/2
-    Rstop = beamstop/2
+    Rbeamstop = beamstop/2
     Dsource = source_distance
     Ddetector = detector_distance
 
     stats = []
-    PI,PJ = np.meshgrid(pixel_i, pixel_j)
+    PI, PJ = np.meshgrid(pixel_i, pixel_j)
     current_j = 1000001 # arbitrary unlikely number
-    for p_i,p_j in zip(PI.flat, PJ.flat):
+    for p_i, p_j in zip(PI.flat, PJ.flat):
         if current_j != p_j:
             print "j=%d"%p_j
             current_j = p_j
@@ -355,6 +355,12 @@ def pinhole(pixel_i, pixel_j, pixel_width=5, pixel_height=5,
         # ==== Compute image on detector without sample ====
         #
         #d_az, d_el, d_L, d_x, d_y = ballistics(s_az, s_el, s_L, s_x, s_y, Ddetector)
+
+        ### filter through beam stop
+        ##idx = (d_x**2 + (d_y-delta_y)**2 < Rbeamstop**2)
+        ##s_az,s_el,s_L,s_x,s_y = [w[idx] for w in (s_az,s_el,s_L,s_x,s_y)]
+        ##d_az,d_el,d_L,d_x,d_y = [w[idx] for w in (d_az,d_el,d_L,d_x,d_y)]
+
         #plot(d_x/pixel_width,d_y/pixel_height,"G: neutron detector pixel"); return
 
 
@@ -384,30 +390,39 @@ def pinhole(pixel_i, pixel_j, pixel_width=5, pixel_height=5,
         q = 4*pi*sin(q_theta)/s_L
         #return
 
+        # filter through beam stop
+        idx = (p_x**2 + p_y**2 > Rbeamstop**2)
+        q_theta, q_phi, q = [w[idx] for w in (q_theta, q_phi, q)]
+
         # ==== calculate stats ====
         cx, cy = p_i*pixel_width, p_j*pixel_height
         theta_nominal = arctan2(sqrt(cx**2+cy**2),Ddetector)/2*180/pi
-        theta_mean, theta_std = np.mean(q_theta)*180/pi, np.std(q_theta)*180/pi
         phi_nominal = arctan2(cy,cx)*180/pi
-        phi_mean, phi_std = np.mean(q_phi)*180/pi, np.std(q_phi)*180/pi
         q_nominal = 4*pi*sin(theta_nominal*pi/180)/wavelength
-        q_mean, q_std = np.mean(q), np.std(q)
+        qperp_nominal = 0
+
         # Approximate q_perp as arc length between nominal phi and actual phi
         # at radius q.
         qperp = q*(q_phi-phi_nominal)
-        qperp_nominal = 0
-        qperp_mean, qperp_std = np.mean(qperp), np.std(qperp)
-        stats.append([
-            theta_nominal, theta_mean, theta_std,
-            phi_nominal, phi_mean, phi_std,
-            q_nominal, q_mean, q_std,
-            qperp_nominal, qperp_mean, qperp_std,
-            ])
+
+        if len(q) > 1:
+            theta_mean, theta_std = np.mean(q_theta)*180/pi, np.std(q_theta)*180/pi
+            phi_mean, phi_std = np.mean(q_phi)*180/pi, np.std(q_phi)*180/pi
+            q_mean, q_std = np.mean(q), np.std(q)
+            qperp_mean, qperp_std = np.mean(qperp), np.std(qperp)
+            stats.append([
+                theta_nominal, theta_mean, theta_std,
+                phi_nominal, phi_mean, phi_std,
+                q_nominal, q_mean, q_std,
+                qperp_nominal, qperp_mean, qperp_std,
+                ])
 
     config = "src-ap:%.1fcm samp-ap:%.1fcm src-dist:%.1fm det-dist:%.1fm L:%.1fA" % (
-            source_aperture/10, sample_aperture/10, 
+            source_aperture/10, sample_aperture/10,
             Dsource/1000, Ddetector/1000, wavelength)
-    if len(stats) == 1:
+    if len(stats) == 0:
+        pass  # No samples fell in detector region
+    elif len(stats) == 1:
         # print stats
         pixel_config = "%s pixel:%d,%d (%dX%d mm^2)" %(
               config, p_i, p_j, pixel_width, pixel_height)
@@ -422,7 +437,7 @@ def pinhole(pixel_i, pixel_j, pixel_width=5, pixel_height=5,
         #plt.hist(q_az*180/pi,bins=50); plt.title("G: scattered rotation"); plt.figure()
         #plt.hist(q_el*180/pi,bins=50); plt.title("G: scattered elevation"); return
         #plt.hist(q_theta*180/pi,bins=50); plt.title("G: Q theta"); return
-        #plt.hist(q,bins=50); plt.title("G: Q"); return
+        #plt.hist(q,bins=50,normed=True); plt.title("G: Q"); return
 
         # plot resolution
         qual = "for pixel %d,%d"%(p_i, p_j)
@@ -511,17 +526,24 @@ if __name__ == "__main__":
               "wavelength","wavelength_resolution")
     values = (
         #16270,13170, 28.6,25.4,50.8,13,0.109  # 13m @ 13A max resolution
-         15727,14547, 76.0,25.4,50.8, 6,0.124  # 14.5m @ 6A low Q
+        #15727,14547, 76.0,25.4,50.8, 6,0.124  # 14.5m @ 6A low Q
+        6959, 4000,50.8,9.5,50.8, 6,0.145  # 4m @ 6A on NG7
+        #13125, 13000, 50.8, 9.5, 101.6, 6, 0.14  # 13m @ 6A on NG7
         #10070, 4050,100.0,25.4,50.8, 8,0.125  # 4m @ 8A
         # 3870, 1380,100.0,25.4,50.8, 6,0.236  # 1.3m @ 6A max flux
     )
+    # Parameters from NCNR VAX format files
+    #   resolution.ap12dis*1000, det.dis*1000
+    #   resolution.ap1, resolution.ap2
+    #   det.bstop
+    #   resolution.lmda, resolution.dlmda
     geom = dict(zip(fields,values))
 
     # ==== remove gravity
     #geom["aligned_wavelength"] = geom["wavelength"] = 0.001
 
     # ==== select precision
-    #N = 1000000 # high precision
+    #N = 10000000 # high precision
     N = 100000 # low precision
 
     # ==== select detector portion
@@ -529,16 +551,17 @@ if __name__ == "__main__":
         # various detector regions
         #i=j=np.arange(-63.5,64) # full detector SLOW!!!
         #i=j=np.arange(-63.5,64,4) # down sampled
-        i,j = np.arange(3.5, 64), [0] # horizontal line
+        i,j = np.arange(6, 64), [0] # horizontal line
         #i,j = [0], np.arange(3.5, 64) # vertical line
         #i,j = [6],[6]  # low Q point
         #i,j = [45],[45]  # high Q point
         plt.figure(); pinhole(i,j,N=N,**geom)
     else:
         # variety of single point distributions
+        geom['beamstop'] = 0.
         #plt.figure(); pinhole([0],[0],N=N,**geom)
-        #plt.figure(); pinhole([1],[0],N=N,**geom)
-        plt.figure(); pinhole([2],[0],N=N,**geom)
+        plt.figure(); pinhole([1],[0],N=N,**geom)
+        #plt.figure(); pinhole([2],[0],N=N,**geom)
         #plt.figure(); pinhole([3],[0],N=N,**geom)
         #plt.figure(); pinhole([4],[0],N=N,**geom)
         plt.figure(); pinhole([6],[0],N=N,**geom)
