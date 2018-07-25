@@ -147,21 +147,32 @@ def plot_angles(theta,phi,bins=50):
     plt.xlabel('theta (degrees)')
     plt.ylabel('phi (degrees)')
 
-def plot_q(q, phi, title):
-    plt.subplot(131)
-    plt.hist(q,bins=50)
+def plot_q(q, phi, title, plot_phi=True):
+    plt.suptitle(title)
+    ax = plt.subplot(131 if plot_phi else 111)
+    n, bins, patches = plt.hist(q, bins=50, normed=True)
+    mean, std = np.mean(q), np.std(q, ddof=1)
+    plt.plot(bins, np.exp(-0.5*((bins-mean)/std)**2)/np.sqrt(2*pi*std**2))
+    q_low, q_high = mean-2.5*std, mean+3*std
+    #q_low, q_high = mean**2/(mean + 3*std), mean + 3*std
+    ax.vlines([q_low, q_high], 0, 1, transform=ax.get_xaxis_transform(),
+              linestyle='dashed')
     plt.grid(True)
     plt.xlabel("Q (1/A)")
-    plt.subplot(132)
-    plt.hist(phi*180/pi,bins=50)
+    if not plot_phi:
+        return
+    phi = np.degrees(phi)
+    ax = plt.subplot(132)
+    n, bins, patches = plt.hist(phi, bins=50, normed=True)
+    mean, std = np.mean(phi), np.std(phi, ddof=1)
+    plt.plot(bins, np.exp(-0.5*((bins-mean)/std)**2)/np.sqrt(2*pi*std**2))
     plt.grid(True)
     plt.xlabel("phi (degrees)")
     plt.subplot(133)
-    plt.plot(q, phi*180/pi,'.')
+    plt.plot(q, phi,'.')
     plt.grid(True)
     plt.xlabel('Q (1/A)')
     plt.ylabel('phi (degrees)')
-    plt.suptitle(title)
 
 def plot_qperp(q, qperp, title):
     plt.subplot(131)
@@ -441,8 +452,9 @@ def pinhole(pixel_i, pixel_j, pixel_width=5, pixel_height=5,
 
         # plot resolution
         qual = "for pixel %d,%d"%(p_i, p_j)
-        plot_angles(q_theta, q_phi)
-        #plot_q(q, q_phi, "Q %s"%qual)
+        #plot_angles(q_theta, q_phi)
+        plot_q(q, q_phi, "Q %s"%qual, plot_phi=False)
+        #plot_q(np.log10(q), q_phi, "Q %s"%qual, plot_phi=False)
         #plot_qperp(q, qperp, "Q %s"%qual)
         plt.suptitle(pixel_config)
     elif len(pixel_i) == 1 or len(pixel_j) == 1:
@@ -544,10 +556,11 @@ if __name__ == "__main__":
 
     # ==== select precision
     #N = 10000000 # high precision
-    N = 100000 # low precision
+    N = 1000000 # mid precision
+    #N = 100000 # low precision
 
     # ==== select detector portion
-    if 1:
+    if 0:
         # various detector regions
         #i=j=np.arange(-63.5,64) # full detector SLOW!!!
         #i=j=np.arange(-63.5,64,4) # down sampled
@@ -558,9 +571,9 @@ if __name__ == "__main__":
         plt.figure(); pinhole(i,j,N=N,**geom)
     else:
         # variety of single point distributions
-        geom['beamstop'] = 0.
+        #geom['beamstop'] = 0.
         #plt.figure(); pinhole([0],[0],N=N,**geom)
-        plt.figure(); pinhole([1],[0],N=N,**geom)
+        #plt.figure(); pinhole([1],[0],N=N,**geom)
         #plt.figure(); pinhole([2],[0],N=N,**geom)
         #plt.figure(); pinhole([3],[0],N=N,**geom)
         #plt.figure(); pinhole([4],[0],N=N,**geom)
