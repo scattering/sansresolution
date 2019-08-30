@@ -115,34 +115,34 @@ def to_velocity(wavelength): # m/s
 def to_wavelength(velocity): # A
     return VELOCITY_FACTOR / velocity
 
-def plot3(x,y,z):
+def plot3(x, y, z):
     from mpl_toolkits.mplot3d import Axes3D
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-    ax.scatter(x,y,z)
-    ax.set_xlim3d(-1,1)
-    ax.set_ylim3d(-1,1)
-    ax.set_zlim3d(-1,1)
+    ax.scatter(x, y, z)
+    ax.set_xlim3d(-1, 1)
+    ax.set_ylim3d(-1, 1)
+    ax.set_zlim3d(-1, 1)
     fig.canvas.draw()
 
-def plot(x,y,title):
-    plt.plot(x,y,'.')
+def plot(x, y, title):
+    plt.plot(x, y,'.')
     plt.axis('equal')
     plt.title(title)
     plt.grid(True)
 
-def plot_angles(theta,phi,bins=50):
+def plot_angles(theta, phi, bins=50):
     # plot angle densities
     plt.subplot(131)
-    plt.hist(degrees(theta),bins=bins)
+    plt.hist(degrees(theta), bins=bins)
     plt.xlabel("theta (degrees)")
     plt.grid(True)
     plt.subplot(132)
-    plt.hist(degrees(phi),bins=bins)
+    plt.hist(degrees(phi), bins=bins)
     plt.xlabel("phi (degrees)")
     plt.grid(True)
     plt.subplot(133)
-    plt.plot(degrees(theta),degrees(phi),'.')
+    plt.plot(degrees(theta), degrees(phi), '.')
     plt.grid(True)
     plt.xlabel('theta (degrees)')
     plt.ylabel('phi (degrees)')
@@ -150,49 +150,53 @@ def plot_angles(theta,phi,bins=50):
 def plot_q(q, phi, title, plot_phi=True):
     plt.suptitle(title)
     ax = plt.subplot(131 if plot_phi else 111)
-    n, bins, patches = plt.hist(q, bins=50, normed=True)
+    n, bins, patches = plt.hist(q, bins=50, density=True)
     mean, std = np.mean(q), np.std(q, ddof=1)
     plt.plot(bins, exp(-0.5*((bins-mean)/std)**2)/sqrt(2*pi*std**2))
     q_low, q_high = mean-2.5*std, mean+3*std
     #q_low, q_high = mean**2/(mean + 3*std), mean + 3*std
-    ax.vlines([q_low, q_high], 0, 1, transform=ax.get_xaxis_transform(),
-              linestyle='dashed')
+    trans = ax.get_xaxis_transform()
+    ax.vlines([q_low, q_high], 0, 1, transform=trans, linestyle='dashed')
+    plt.text(q_low, 1, "\n $\mu - 2.5\sigma$",
+             transform=trans, va='top', ha='left')
+    plt.text(q_high, 1, "\n$\mu + 3\sigma$  ",
+             transform=trans, va='top', ha='right')
     plt.grid(True)
     plt.xlabel("Q (1/A)")
     if not plot_phi:
         return
     ax = plt.subplot(132)
-    n, bins, patches = plt.hist(degrees(phi), bins=50, normed=True)
+    n, bins, patches = plt.hist(degrees(phi), bins=50, density=True)
     mean, std = np.mean(degrees(phi)), np.std(degrees(phi), ddof=1)
     plt.plot(bins, exp(-0.5*((bins-mean)/std)**2)/sqrt(2*pi*std**2))
     plt.grid(True)
     plt.xlabel("phi (degrees)")
     plt.subplot(133)
-    plt.plot(q, degrees(phi),'.')
+    plt.plot(q, degrees(phi), '.')
     plt.grid(True)
     plt.xlabel('Q (1/A)')
     plt.ylabel('phi (degrees)')
 
 def plot_qperp(q, qperp, title):
     plt.subplot(131)
-    plt.hist(q,bins=50)
+    plt.hist(q, bins=50)
     plt.grid(True)
     plt.xlabel(r"$Q_\parallel (1/A)$")
     plt.subplot(132)
-    plt.hist(qperp,bins=50)
+    plt.hist(qperp, bins=50)
     plt.grid(True)
     plt.xlabel(r"$Q_\perp (1/A)$")
     plt.subplot(133)
-    plt.plot(q, qperp,'.')
+    plt.plot(q, qperp, '.')
     plt.grid(True)
     plt.xlabel(r'$Q_\parallel (1/A)$')
     plt.ylabel(r'$Q_\perp (1/A)$')
     plt.suptitle(title)
 
-def triangle(N,a=-1,b=1,c=0):
+def triangle(N, a=-1, b=1, c=0):
     """
-    Pull random numbers from a triangular distribution over [a,b]
-    with peak at c in [a,b].
+    Pull random numbers from a triangular distribution over [a, b]
+    with peak at c in [a, b].
     """
     cutoff = (c-a)/(b-a)
     U = rand(N)
@@ -221,9 +225,9 @@ def ballistics(az, el, L, x, y, d, a=earth_gravity):
     L = to_wavelength(v)
     return az, el, L, x, y
 
-def throwing_angle(v,x,y,a=earth_gravity):
+def throwing_angle(v, x, y, a=earth_gravity):
     """
-    angle to throw at velocity v so that (0,0) -> (x,y)
+    angle to throw at velocity v so that (0, 0) -> (x, y)
 
     returns the valid index, and the plus and minus angles which
     allow the ball to get there
@@ -231,8 +235,8 @@ def throwing_angle(v,x,y,a=earth_gravity):
     if there is only one angle, it is returned twice
     """
     if a == 0:
-        idx = slice(None,None,None)
-        angle = arctan2(y,x)
+        idx = slice(None, None, None)
+        angle = arctan2(y, x)
         return idx, angle, angle
     else:
         radical = v**4 - a*(a*x**2 + 2*y*v**2)
@@ -271,23 +275,23 @@ def aperture_alignment(wavelength, aligned_wavelength, Dsource, Ddetector):
 def nominal_q(sx, sy, az_in, el_in, az_out, el_out, dz):
     nx, ny = sx + dz * tan(az_in), sy + dz * tan(el_in)
     nd = sqrt( (nx-sx)**2 + (ny-sy)**2 + dz**2 )
-    #plt.subplot(131); plot(nx/5,ny/5,'G: direct flight beam center')
+    #plt.subplot(131); plot(nx/5, ny/5, 'G: direct flight beam center')
 
     px, py = sx + dz * tan(az_out), sy + dz * tan(el_out)
     pd = sqrt( (px-sx)**2 + (py-sy)**2 + dz**2 )
-    #plt.subplot(122); plot(px/5,py/5,'G: direct flight scattered beam')
+    #plt.subplot(122); plot(px/5, py/5, 'G: direct flight scattered beam')
 
     if 0:
-        # Correction to move px,py into the q normal plane.  This is
+        # Correction to move px, py into the q normal plane.  This is
         # insignificant for small angle scattering.
         nx_hat, ny_hat, nz_hat = (nx-sx)/nd, (ny-sy)/nd, dz/nd
         px_hat, py_hat, pz_hat = (px-sx)/pd, (py-sy)/pd, dz/pd
         d = nd / (px_hat*nx_hat + py_hat*ny_hat + pz_hat*nz_hat)
         px, py = sx + px_hat*d, sy + py_hat*d
-    #plt.subplot(122); plot((px)/5,(py)/5,'G: scattered beam on q normal plane')
+    #plt.subplot(122); plot((px)/5, (py)/5, 'G: scattered beam on q normal plane')
 
-    # Note: px,py is the location of the scattered neutron relative to the
-    # beam center without gravity in detector coordinates, not the qx,qy vector
+    # Note: px, py is the location of the scattered neutron relative to the
+    # beam center without gravity in detector coordinates, not the qx, qy vector
     # in inverse coordinates.  This allows us to compute the scattered angle at
     # the sample, returning theta and phi.
     qd = sqrt((px-nx)**2 + (py-ny)**2)
@@ -295,7 +299,7 @@ def nominal_q(sx, sy, az_in, el_in, az_out, el_out, dz):
 
     return theta, phi
 
-def resolution(R1,R2,D1,D2,dx,dy,L,dL):
+def resolution(R1, R2, D1, D2, dx, dy, L, dL):
     dQx = sqrt( (2*pi/(L*D2))**2 )
 
 def neutrons_on_sample(Rsource, Rsample, Rbeamstop, Dsource, Ddetector,
@@ -306,45 +310,44 @@ def neutrons_on_sample(Rsource, Rsample, Rbeamstop, Dsource, Ddetector,
     # The z-axis connects the center of the apertures and detector.
     # Limit the source angles to those that can make it from one side of the
     # source aperture to the other side of the sample aperture.
-    #print("v_min=%.2f m/s,  gravity_drop=%.2f mm"%(min_velocity,gravity_drop))
+    #print("v_min=%.2f m/s,  gravity_drop=%.2f mm"%(min_velocity, gravity_drop))
     limit = 1 - 1/sqrt(1+((Rsource+Rsample)/Dsource)**2)
     theta, phi = arccos(1-rand(N)*limit), 2*pi*rand(N)
     #plot3(sin(theta)*cos(phi), sin(theta)*sin(phi), cos(theta)); return
-    #print("limit",limit)
-    #plot(degrees(theta),degrees(phi),"polar vs equatorial angles"); return
+    #print("limit", limit)
+    #plot(degrees(theta), degrees(phi), "polar vs equatorial angles"); return
 
     # source wavelength is a triangular distribution with fwhm resolution dL/L
     L = triangle(len(theta))*wavelength*wavelength_resolution + wavelength
-    #plt.hist(L,bins=50); return
+    #plt.hist(L, bins=50); return
 
-    # source position: x,y is the isotropic incident location
-    alpha,r = 2*pi*rand(N), Rsource*arccos(rand(N))*2/pi
-    x,y = r*cos(alpha), r*sin(alpha)
-    #plot(x,y,"neutron position in source aperture"); return
+    # source position: x, y is the isotropic incident location
+    alpha, r = 2*pi*rand(N), Rsource*arccos(rand(N))*2/pi
+    x, y = r*cos(alpha), r*sin(alpha)
+    #plot(x, y, "neutron position in source aperture"); return
 
     # ==== Gravity correction ====
     # gravity calculations work better with azimuth and elevation
     az, el = theta*cos(phi), theta*sin(phi)
 
-    delta_el, delta_y, delta_p \
-            = aperture_alignment(wavelength, aligned_wavelength,
-                                            Dsource, Ddetector)
+    delta_el, delta_y, delta_p = aperture_alignment(
+        wavelength, aligned_wavelength, Dsource, Ddetector)
     el += delta_el
 
     # ===== Compute image on sample =====
-    #plot(degrees(az),degrees(el),"azimuthal angle vs elevation"); return
-    s_az,s_el,s_L,s_x,s_y = ballistics(az,el,L,x,y,Dsource)
-    #plt.hist(s_L,bins=50); return # updated wavelengths
-    #plot(s_x,s_y,"G: neutron position on sample aperture"); return
-    #plot(s_az,s_el,"G: sample aperture azimuthal angle vs elevation"); return
+    #plot(degrees(az), degrees(el), "azimuthal angle vs elevation"); return
+    s_az, s_el, s_L, s_x, s_y = ballistics(az, el, L, x, y, Dsource)
+    #plt.hist(s_L, bins=50); return # updated wavelengths
+    #plot(s_x, s_y, G: neutron position on sample aperture"); return
+    #plot(s_az, s_el, G: sample aperture azimuthal angle vs elevation"); return
 
     # filter through sample aperture
     idx = (s_x**2 + (s_y-delta_y)**2 < Rsample**2)
-    s_az,s_el,s_L,s_x,s_y = [w[idx] for w in (s_az,s_el,s_L,s_x,s_y)]
-    #plt.hist(s_L,bins=50); plt.title("G: sample wavelength"); return
-    #plot(az[idx],el[idx],"G: sample azimuthal angle vs elevation"); return
-    #plot(s_az,s_el,"G: sample azimuthal angle vs elevation"); return
-    #plot(s_x,s_y,"G: neutron position in sample"); return
+    s_az, s_el, s_L, s_x, s_y = [w[idx] for w in (s_az, s_el, s_L, s_x, s_y)]
+    #plt.hist(s_L, bins=50); plt.title("G: sample wavelength"); return
+    #plot(az[idx], el[idx], G: sample azimuthal angle vs elevation"); return
+    #plot(s_az, s_el, G: sample azimuthal angle vs elevation"); return
+    #plot(s_x, s_y, G: neutron position in sample"); return
 
     return s_az, s_el, s_L, s_x, s_y
 
@@ -366,9 +369,8 @@ def pinhole(pixel_i, pixel_j, pixel_width=5, pixel_height=5,
     Rbeamstop = beamstop/2
     Dsource = source_distance
     Ddetector = detector_distance
-    delta_el, delta_y, delta_p \
-            = aperture_alignment(wavelength, aligned_wavelength,
-                                            Dsource, Ddetector)
+    delta_el, delta_y, delta_p = aperture_alignment(
+        wavelength, aligned_wavelength, Dsource, Ddetector)
     s_az, s_el, s_L, s_x, s_y = neutrons_on_sample(
         Rsource, Rsample, Rbeamstop, Dsource, Ddetector,
         wavelength, wavelength_resolution, aligned_wavelength,
@@ -380,10 +382,10 @@ def pinhole(pixel_i, pixel_j, pixel_width=5, pixel_height=5,
 
     ### filter through beam stop
     ##idx = (d_x**2 + (d_y-delta_y)**2 < Rbeamstop**2)
-    ##s_az,s_el,s_L,s_x,s_y = [w[idx] for w in (s_az,s_el,s_L,s_x,s_y)]
-    ##d_az,d_el,d_L,d_x,d_y = [w[idx] for w in (d_az,d_el,d_L,d_x,d_y)]
+    ##s_az, s_el, s_L, s_x, s_y = [w[idx] for w in (s_az, s_el, s_L, s_x, s_y)]
+    ##d_az, d_el, d_L, d_x, d_y = [w[idx] for w in (d_az, d_el, d_L, d_x, d_y)]
 
-    #plot(d_x/pixel_width,d_y/pixel_height,"G: neutron detector pixel"); return
+    #plot(d_x/pixel_width, d_y/pixel_height, "G: neutron detector pixel"); return
 
     # ==== Scatter off sample ====
     mode = None
@@ -404,8 +406,8 @@ def pinhole(pixel_i, pixel_j, pixel_width=5, pixel_height=5,
         # find neutron position on the detector without scattering
         d_az, d_el, d_L, d_x, d_y = ballistics(s_az, s_el, s_L, s_x, s_y, Ddetector)
         # find scattering angle from each neutron to each pixel
-        r = sqrt(((d_x-s_x)[:,None] - cx.flatten()[None,:])**2
-                 + ((d_y-s_y)[:,None] - (cy+delta_p).flatten()[None,:])**2)
+        r = sqrt(((d_x-s_x)[:, None] - cx.flatten()[None, :])**2
+                 + ((d_y-s_y)[:, None] - (cy+delta_p).flatten()[None, :])**2)
         theta = arctan2(r, Ddetector)/2
         # find q value for each neutron at each pixel
         q = 4*pi*sin(theta)/d_L[:, None]
@@ -467,11 +469,11 @@ def pinhole(pixel_i, pixel_j, pixel_width=5, pixel_height=5,
         #    N)
 
         # ==== Compute scattering theta, phi for pixel ====
-        # find random point in pixel i,j to scatter to
-        xl,xu = (p_i-0.5)*pixel_width, (p_i+0.5)*pixel_width
-        yl,yu = delta_p+(p_j-0.5)*pixel_height, delta_p+(p_j+0.5)*pixel_height
-        p_x,p_y = rand(len(s_x))*(xu-xl)+xl, rand(len(s_x))*(yu-yl)+yl
-        #plot(px,py,"px,py pixel locations"); return
+        # find random point in pixel i, j to scatter to
+        xl, xu = (p_i-0.5)*pixel_width, (p_i+0.5)*pixel_width
+        yl, yu = delta_p+(p_j-0.5)*pixel_height, delta_p+(p_j+0.5)*pixel_height
+        p_x, p_y = rand(len(s_x))*(xu-xl)+xl, rand(len(s_x))*(yu-yl)+yl
+        #plot(px, py, "px,py pixel locations"); return
 
         # find the scattering angle necessary to reach point P on the detector
         q_az = arctan2(p_x-s_x, np.ones_like(s_x)*Ddetector)
@@ -479,7 +481,7 @@ def pinhole(pixel_i, pixel_j, pixel_width=5, pixel_height=5,
                               0.001*(p_y-s_y))
         #q_theta = arccos(sin(s_el)*sin(q_el) + cos(s_el)*cos(q_el)*cos(q_az-s_az))
         #q_theta_2 = arctan2(sqrt((d_x-p_x)**2+(d_y-p_y)**2)), Ddetector)
-        #q_phi = arctan2(q_el,q_az)
+        #q_phi = arctan2(q_el, q_az)
 
         # Note that q scattering calculations look at positions on the detector
         # assuming neutrons travel in a straight line, and not the positions
@@ -499,8 +501,8 @@ def pinhole(pixel_i, pixel_j, pixel_width=5, pixel_height=5,
 
         # ==== calculate stats ====
         cx, cy = p_i*pixel_width, p_j*pixel_height
-        theta_nominal = arctan2(sqrt(cx**2+cy**2),Ddetector)/2
-        phi_nominal = arctan2(cy,cx)
+        theta_nominal = arctan2(sqrt(cx**2+cy**2), Ddetector)/2
+        phi_nominal = arctan2(cy, cx)
         q_nominal = 4*pi*sin(theta_nominal)/wavelength
         qperp_nominal = 0
 
@@ -534,17 +536,21 @@ def pinhole(pixel_i, pixel_j, pixel_width=5, pixel_height=5,
         pixel_config = "%s pixel:%d,%d (%dX%d mm^2)" %(
               config, p_i, p_j, pixel_width, pixel_height)
         print(pixel_config)
-        print("G nominal theta: %.2f   actual theta: %.2f +/- %.2f"
-              % (degrees(theta_nominal),degrees(theta_mean),degrees(theta_std)))
-        print("G nominal phi: %.2f   actual phi: %.2f +/- %.2f"
-              % (degrees(phi_nominal),degrees(phi_mean),degrees(phi_std)))
-        print("G nominal q: %.3f  actual q: %.3f +/- %.3f"
+        #print("  nominal lambda: %.4f  actual lambda: %.4f +/- %.4f (Ang)"
+        #      % (wavelength, np.mean(s_L), np.std(s_L)))
+        print("  nominal 1/lambda: %.4f  actual 1/lambda: %.4f +/- %.4f (1/Ang)"
+              % (1./wavelength, np.mean(1./s_L), np.std(1./s_L)))
+        print("  nominal theta: %.4f  actual theta: %.4f +/- %.4f (degrees)"
+              % (degrees(theta_nominal), degrees(theta_mean), degrees(theta_std)))
+        #print("  nominal phi: %.4f  actual phi: %.4f +/- %.4f (degrees)"
+        #      % (degrees(phi_nominal), degrees(phi_mean), degrees(phi_std)))
+        print("  nominal q: %.4f  actual q: %.4f +/- %.4f (1/Ang)"
               % (q_nominal, q_mean, q_std))
 
-        #plt.hist(degrees(q_az),bins=50); plt.title("G: scattered rotation"); plt.figure()
-        #plt.hist(degrees(q_el),bins=50); plt.title("G: scattered elevation"); return
-        #plt.hist(degrees(q_theta),bins=50); plt.title("G: Q theta"); return
-        #plt.hist(q,bins=50,normed=True); plt.title("G: Q"); return
+        #plt.hist(degrees(q_az), bins=50); plt.title("G: scattered rotation"); plt.figure()
+        #plt.hist(degrees(q_el), bins=50); plt.title("G: scattered elevation"); return
+        #plt.hist(degrees(q_theta), bins=50); plt.title("G: Q theta"); return
+        #plt.hist(q, bins=50, density=True); plt.title("G: Q"); return
 
         # plot resolution
         qual = "for pixel %d,%d"%(p_i, p_j)
@@ -557,12 +563,12 @@ def pinhole(pixel_i, pixel_j, pixel_width=5, pixel_height=5,
         stats = np.array(stats)
         plt.suptitle(config)
         plt.subplot(221)
-        plt.plot(stats[:,6], degrees(stats[:,2]), '.')
+        plt.plot(stats[:, 6], degrees(stats[:, 2]), '.')
         plt.grid(True)
         plt.xlabel(r'$Q (1/A)$')
         plt.ylabel(r'$\Delta\theta (\degree)$')
         plt.subplot(222)
-        plt.plot(stats[:,6], degrees(stats[:,5]), '.')
+        plt.plot(stats[:, 6], degrees(stats[:, 5]), '.')
         plt.grid(True)
         plt.xlabel(r'$Q (1/A)$')
         plt.ylabel(r'$\Delta\phi (\degree)$')
@@ -602,14 +608,19 @@ def pinhole(pixel_i, pixel_j, pixel_width=5, pixel_height=5,
             plt.xlabel(r'$Q (1/A)$')
             plt.ylabel(r'$I (1/cm)$')
             np.savetxt("res_Iq.dat", np.array([q, I, dI, dq]).T)
+            if 1:
+                plt.figure()
+                plt.plot(stats[:, 6], stats[:, 7], '.')
+                plt.xlabel("Q nominal")
+                plt.ylabel("Q mean")
         else:
             plt.subplot(223)
-            plt.plot(stats[:,6], stats[:,8], '.')
+            plt.plot(stats[:, 6], stats[:, 8], '.')
             plt.grid(True)
             plt.xlabel(r'$Q (1/A)$')
             plt.ylabel(r'$\Delta Q_\parallel (1/A)$')
             plt.subplot(224)
-            plt.plot(stats[:,6], stats[:,11], '.')
+            plt.plot(stats[:, 6], stats[:, 11], '.')
             plt.grid(True)
             plt.xlabel(r'$Q (1/A)$')
             plt.ylabel(r'$\Delta Q_\perp (1/A)$')
@@ -617,34 +628,34 @@ def pinhole(pixel_i, pixel_j, pixel_width=5, pixel_height=5,
         stats = np.array(stats)
         plt.suptitle(config)
         plt.subplot(131)
-        data,title = degrees(stats[:,2]), r"$\Delta\theta$"
+        data, title = degrees(stats[:, 2]), r"$\Delta\theta$"
         mask =  (PI**2+PJ**2<phi_mask**2)
         data = np.ma.array(data, mask=mask)
-        #data,title = stats[:,1]-stats[:,0], r"$\theta - \hat\theta$"
-        #data = np.clip(stats[:,1]-stats[:,0], 0, 0.02)
-        plt.pcolormesh(pixel_i, pixel_j, data.reshape(len(pixel_i),len(pixel_j)))
+        #data, title = stats[:, 1]-stats[:, 0], r"$\theta - \hat\theta$"
+        #data = np.clip(stats[:, 1]-stats[:, 0], 0, 0.02)
+        plt.pcolormesh(pixel_i, pixel_j, data.reshape(len(pixel_i), len(pixel_j)))
         plt.grid(True)
         plt.axis('equal')
         plt.title(title)
         plt.colorbar()
         plt.subplot(132)
-        data,title = degrees(stats[:,5]), r"$\Delta\phi$"
-        #data,title = stats[:,4]-stats[:,3], r"$\phi - \hat\phi$"
+        data, title = degrees(stats[:, 5]), r"$\Delta\phi$"
+        #data, title = stats[:, 4]-stats[:, 3], r"$\phi - \hat\phi$"
         mask =  (PI<phi_mask) & (abs(PJ)<phi_mask)
         data = np.ma.array(data, mask=mask)
-        plt.pcolormesh(pixel_i, pixel_j, data.reshape(len(pixel_i),len(pixel_j)))
+        plt.pcolormesh(pixel_i, pixel_j, data.reshape(len(pixel_i), len(pixel_j)))
         plt.grid(True)
         plt.axis('equal')
         plt.title(title)
         plt.colorbar()
         plt.subplot(133)
-        #data,title = stats[:,8], r"$\Delta q$"
-        data,title = stats[:,8]/stats[:,6], r"$\Delta q/q$"
+        #data, title = stats[:, 8], r"$\Delta q$"
+        data, title = stats[:, 8]/stats[:, 6], r"$\Delta q/q$"
         mask =  (PI**2+PJ**2<phi_mask**2)
         data = np.ma.array(data, mask=mask)
-        #data,title = stats[:,7]-stats[:,6], r"$q - \hat q$"
-        #data = np.clip(stats[:,7]-stats[:,6], 0, 0.0005)
-        plt.pcolormesh(pixel_i, pixel_j, data.reshape(len(pixel_i),len(pixel_j)))
+        #data, title = stats[:, 7]-stats[:, 6], r"$q - \hat q$"
+        #data = np.clip(stats[:, 7]-stats[:, 6], 0, 0.0005)
+        plt.pcolormesh(pixel_i, pixel_j, data.reshape(len(pixel_i), len(pixel_j)))
         plt.grid(True)
         plt.axis('equal')
         plt.title(title)
@@ -682,26 +693,28 @@ def fractal(q, fractal_dim, radius, cor_length):
 
 if __name__ == "__main__":
     # ==== select Q range
-    fields = ("source_distance","detector_distance",
-              "source_aperture","sample_aperture",
+    fields = ("source_distance", "detector_distance",
+              "source_aperture", "sample_aperture",
               "beamstop",
-              "wavelength","wavelength_resolution")
+              "wavelength", "wavelength_resolution")
     values = (
-        #16270,13170, 28.6,25.4,50.8,13,0.109  # 13m @ 13A max resolution
-        #15727,14547, 76.0,25.4,50.8, 6,0.124  # 14.5m @ 6A low Q
-        6959, 4000,50.8,9.5,50.8, 6,0.145  # 4m @ 6A on NG7
+        #16270, 13170, 28.6, 25.4, 50.8, 13, 0.109  # 13m @ 13A max resolution
+        #15727, 14547, 76.0, 25.4, 50.8, 6, 0.124  # 14.5m @ 6A low Q
+        6959, 4000, 50.8, 9.5, 50.8, 6, 0.145  # 4m @ 6A on NG7
         #13125, 13000, 50.8, 49.5, 101.6, 6, 0.14  # 13m @ 6A on NG7
-        #10070, 4050,100.0,25.4,50.8, 8,0.125  # 4m @ 8A
-        #10070, 4050,100.0,50.9, 87.5, 8,0.125  # 4m @ 8A; very bad res
-        #3870, 1380,100.0,25.4,50.8, 6,0.236  # 1.3m @ 6A max flux
-        #3870, 1380,100.0,50.9,50.8, 6,0.236  # 1.3m @ 6A max flux; very bad res
+        #10070, 4050, 100.0, 25.4, 50.8, 8, 0.125  # 4m @ 8A
+        #10070, 4050, 100.0, 50.9, 87.5, 8, 0.125  # 4m @ 8A; very bad res
+        #3870, 1380, 100.0, 25.4, 50.8, 6, 0.236  # 1.3m @ 6A max flux
+        #3870, 1380, 100.0, 50.9, 50.8, 6, 0.236  # 1.3m @ 6A max flux; very bad res
+        #3914, 566.7, 64.22, 50, 50.8, 6, 0.124  # sasview dataloader test jan08002.abs
+        #3914, 1000, 64.22, 50, 0, 6, 0.124  # sasview dataloader test jan08002.abs
     )
     # Parameters from NCNR VAX format files
     #   resolution.ap12dis*1000, det.dis*1000
     #   resolution.ap1, resolution.ap2
     #   det.bstop
     #   resolution.lmda, resolution.dlmda
-    geom = dict(zip(fields,values))
+    geom = dict(zip(fields, values))
     #geom['Iq'] = lambda q: 1e-7*q**-4   # Power law
     geom['Iq'] = lambda q, r=80: sphere_form(q, r)
     #geom['Iq'] = lambda q, r=8, D=2.5, xi=200.: sphere_form(q, r) * fractal(q, D, r, xi)
@@ -710,38 +723,42 @@ if __name__ == "__main__":
     #geom["aligned_wavelength"] = geom["wavelength"] = 0.001
 
     # ==== select precision
-    #N = 10000000 # high precision
-    N = 1000000 # mid precision
+    N = 10000000 # high precision
+    #N = 1000000 # mid precision
     #N = 100000 # low precision
 
     # ==== select detector portion
-    if 1:
+    if 0:
         # various detector regions
-        #i=j=np.arange(-63.5,64) # full detector SLOW!!!
-        #i=j=np.arange(-63.5,64,4) # down sampled
-        i,j = np.arange(6, 64), [0] # horizontal line
-        #i,j = [0], np.arange(3.5, 64) # vertical line
-        #i,j = [6],[6]  # low Q point
-        #i,j = [45],[45]  # high Q point
-        plt.figure(); pinhole(i,j,N=N,**geom)
+        #i=j=np.arange(-63.5, 64) # full detector SLOW!!!
+        #i=j=np.arange(-63.5, 64, 4) # down sampled
+        i, j = np.arange(6, 64), [0] # horizontal line
+        #i, j = [0], np.arange(3.5, 64) # vertical line
+        #i, j = [6], [6]  # low Q point
+        #i, j = [45], [45]  # high Q point
+        plt.figure(); pinhole(i, j, N=N,
+          #pixel_width=0.5, pixel_height=0.5,
+          **geom)
     else:
         # variety of single point distributions
         #geom['beamstop'] = 0.
         # first pixel after the beam stop, assuming 5 mm per pixel
         p_min = (geom['beamstop']+10)//10
-        plt.figure(); pinhole([p_min],[0],N=N,**geom)
-        #plt.figure(); pinhole([0],[0],N=N,**geom)
-        #plt.figure(); pinhole([1],[0],N=N,**geom)
-        #plt.figure(); pinhole([2],[0],N=N,**geom)
-        #plt.figure(); pinhole([3],[0],N=N,**geom)
-        #plt.figure(); pinhole([4],[0],N=N,**geom)
-        #plt.figure(); pinhole([6],[0],N=N,**geom)
-        #plt.figure(); pinhole([9],[0],N=N,**geom)
-        #plt.figure(); pinhole([10],[0],N=N,**geom)
-        plt.figure(); pinhole([20],[0],N=N,**geom)
-        #plt.figure(); pinhole([40],[0],N=N,**geom)
-        plt.figure(); pinhole([60],[0],N=N,**geom)
-        #plt.figure(); pinhole([0],[60],N=N,**geom)
-        #plt.figure(); pinhole([0],[-60],N=N,**geom)
+        plt.figure(); pinhole([p_min], [0], N=N, **geom)
+        #plt.figure(); pinhole([0], [0], N=N, **geom)
+        #plt.figure(); pinhole([1], [0], N=N, **geom)
+        #plt.figure(); pinhole([2], [0], N=N, **geom)
+        #plt.figure(); pinhole([3], [0], N=N, **geom)
+        #plt.figure(); pinhole([4], [0], N=N, **geom)
+        #plt.figure(); pinhole([6], [0], N=N, **geom)
+        #plt.figure(); pinhole([9], [0], N=N, **geom)
+        #plt.figure(); pinhole([10], [0], N=N, **geom)
+        plt.figure(); pinhole([20], [0], N=N, **geom)
+        #plt.figure(); pinhole([40], [0], N=N, **geom)
+        plt.figure(); pinhole([60], [0], N=N, **geom)
+        #plt.figure(); pinhole([0], [p_min], N=N, **geom)
+        #plt.figure(); pinhole([0], [20], N=N, **geom)
+        #plt.figure(); pinhole([0], [60], N=N, **geom)
+        #plt.figure(); pinhole([0], [-60], N=N, **geom)
 
     plt.show()
