@@ -99,7 +99,8 @@ Given the small angles used in SAS, $Pn \approx P$.
 from __future__ import division, print_function
 from numpy import (
     sqrt, exp, log, pi, sin, cos, tan,
-    arccos, arcsin, arctan, arctan2, degrees, radians)
+    arccos, arcsin, arctan, arctan2, degrees)
+from scipy.stats import circmean, circstd
 from numpy.random import rand
 import numpy as np
 import matplotlib.pyplot as plt
@@ -151,7 +152,7 @@ def plot_angles(theta, phi, bins=50):
     plt.xlabel("phi (degrees)")
     plt.grid(True)
     plt.subplot(133)
-    plt.plot(degrees(theta), degrees(phi), '.')
+    plt.plot(degrees(theta), degrees(phi), '.', ms=1)
     plt.grid(True)
     plt.xlabel('theta (degrees)')
     plt.ylabel('phi (degrees)')
@@ -182,7 +183,7 @@ def plot_q(q, phi, title, plot_phi=True):
     plt.grid(True)
     plt.xlabel("phi (degrees)")
     plt.subplot(133)
-    plt.plot(q, degrees(phi), '.')
+    plt.plot(q, degrees(phi), '.', ms=1)
     plt.grid(True)
     plt.xlabel('Q (1/A)')
     plt.ylabel('phi (degrees)')
@@ -313,6 +314,33 @@ def nominal_q(sx, sy, az_in, el_in, az_out, el_out, dz):
 def resolution(R1, R2, D1, D2, dx, dy, L, dL):
     dQx = sqrt((2*pi/(L*D2))**2)
 
+class Spectrum:
+    def __init__(self, L, I):
+        self.L = L
+        self.I = I
+        # [0, p1, p1+p1, .., 1]
+        self._cdf = np.hstack((0., np.cumsum(I)/np.sum(I)))
+        self._edges = np.hstack((
+            (3*L[0]-L[1])/2,  # Half-step before first wavelength
+            (L[:-1]+L[1:])/2,  # Mid-points between wavelengths
+            (3*L[-1]-L[-2])/2, # Half-step after last wavelength
+            ))
+        self.center = np.sum(L*I)/np.sum(I)
+
+    def rand(self, n=1):
+        samples = np.interp(np.random.rand(n), self._cdf, self._edges)
+        return samples
+
+class Triangle:
+    def __init__(self, wavelength, resolution):
+        self._dL = wavelength*resolution
+        self.center = wavelength
+
+    def rand(self, n=1):
+        # source wavelength is a triangular distribution with fwhm resolution dL/L
+        samples = triangle(n)*self._dL + self.center
+        return samples
+
 def neutrons_on_sample(Rsource, Rsample, Rbeamstop, Dsource, Ddetector,
                        wavelength, wavelength_resolution, aligned_wavelength,
                        N):
@@ -328,9 +356,12 @@ def neutrons_on_sample(Rsource, Rsample, Rbeamstop, Dsource, Ddetector,
     #print("limit", limit)
     #plot(degrees(theta), degrees(phi), "polar vs equatorial angles"); return
 
-    # source wavelength is a triangular distribution with fwhm resolution dL/L
-    L = triangle(len(theta))*wavelength*wavelength_resolution + wavelength
-    #plt.hist(L, bins=50); return
+    if isinstance(wavelength_resolution, tuple):
+        dist = Spectrum(*wavelength_resolution)
+    else:
+        dist = Triangle(wavelength, wavelength_resolution)
+    L = dist.rand(len(theta))
+    #plt.figure(); plt.hist(L, bins=50); # plt.show()
 
     # source position: x, y is the isotropic incident location
     alpha, r = 2*pi*rand(N), Rsource*arccos(rand(N))*2/pi
@@ -523,19 +554,26 @@ def pinhole(pixel_i, pixel_j, pixel_width=5, pixel_height=5,
 
         if len(q) > 1:
             theta_mean, theta_std = np.mean(q_theta), np.std(q_theta)
-            phi_mean, phi_std = np.mean(q_phi), np.std(q_phi)
+            phi_mean, phi_std = circmean(q_phi, -pi, pi), circstd(q_phi, -pi, pi)
             q_mean, q_std = np.mean(q), np.std(q)
             qperp_mean, qperp_std = np.mean(qperp), np.std(qperp)
             # weight each neutron by the sample scattering
             I = np.sum(Iq(q))/len(q) if Iq is not None else 0
             dI = I/sqrt(len(q))
-            stats.append([
-                theta_nominal, theta_mean, theta_std,
-                phi_nominal, phi_mean, phi_std,
-                q_nominal, q_mean, q_std,
-                qperp_nominal, qperp_mean, qperp_std,
-                I, dI,
-                ])
+        else:
+            print("no q values for (%d, %d)"%(p_i, p_j))
+            theta_mean, theta_std = theta_nominal, 0.
+            phi_mean, phi_std = phi_nominal, 0.
+            q_mean, q_std = q_nominal, 0.
+            qperp_mean, qperp_std = qperp_nominal, 0.
+            I, dI = [], []
+        stats.append([
+            theta_nominal, theta_mean, theta_std,
+            phi_nominal, phi_mean, phi_std,
+            q_nominal, q_mean, q_std,
+            qperp_nominal, qperp_mean, qperp_std,
+            I, dI,
+            ])
 
     config = "src-ap:%.1fcm samp-ap:%.1fcm src-dist:%.1fm det-dist:%.1fm L:%.1fA" % (
         source_aperture/10, sample_aperture/10,
@@ -559,15 +597,16 @@ def pinhole(pixel_i, pixel_j, pixel_width=5, pixel_height=5,
               % (q_nominal, q_mean, q_std))
 
         #plt.hist(degrees(q_az), bins=50); plt.title("G: scattered rotation"); plt.figure()
-        #plt.hist(degrees(q_el), bins=50); plt.title("G: scattered elevation"); return
-        #plt.hist(degrees(q_theta), bins=50); plt.title("G: Q theta"); return
-        #plt.hist(q, bins=50, density=True); plt.title("G: Q"); return
+        #plt.hist(degrees(q_el), bins=50); plt.title("G: scattered elevation"); plt.figure()
+        #plt.hist(degrees(q_theta), bins=50); plt.title("G: Q theta"); plt.figure()
+        #plt.hist(q, bins=50, density=True); plt.title("G: Q"); plt.figure()
 
         # plot resolution
         qual = "for pixel %d,%d"%(p_i, p_j)
-        #plot_angles(q_theta, q_phi)
-        plot_q(q, q_phi, "Q %s"%qual, plot_phi=False)
-        #plot_q(np.log10(q), degrees(q_phi), "Q %s"%qual, plot_phi=False)
+        #plot_angles(q_theta, q_phi); plt.figure()
+        plot_q(q, q_phi, "Q %s"%qual, plot_phi=True)
+        #plot_q(q, q_phi, "Q %s"%qual, plot_phi=False)
+        #plot_q(np.log10(q), q_phi, "Q %s"%qual, plot_phi=False)
         #plot_qperp(q, qperp, "Q %s"%qual)
         plt.suptitle(pixel_config)
     elif len(pixel_i) == 1 or len(pixel_j) == 1:
@@ -640,11 +679,13 @@ def pinhole(pixel_i, pixel_j, pixel_width=5, pixel_height=5,
         plt.suptitle(config)
         plt.subplot(131)
         data, title = degrees(stats[:, 2]), r"$\Delta\theta$"
-        mask = (PI**2+PJ**2 < phi_mask**2)
-        data = np.ma.array(data, mask=mask)
+        data = np.ma.array(data, mask=(stats[:, 2] == 0))
+        data = data.reshape(len(pixel_i), len(pixel_j))
+        #mask = (PI**2 + PJ**2 < phi_mask**2)
+        #data = np.ma.array(data, mask=mask)
         #data, title = stats[:, 1]-stats[:, 0], r"$\theta - \hat\theta$"
         #data = np.clip(stats[:, 1]-stats[:, 0], 0, 0.02)
-        plt.pcolormesh(pixel_i, pixel_j, data.reshape(len(pixel_i), len(pixel_j)))
+        plt.pcolormesh(pixel_i, pixel_j, data)
         plt.grid(True)
         plt.axis('equal')
         plt.title(title)
@@ -652,9 +693,10 @@ def pinhole(pixel_i, pixel_j, pixel_width=5, pixel_height=5,
         plt.subplot(132)
         data, title = degrees(stats[:, 5]), r"$\Delta\phi$"
         #data, title = stats[:, 4]-stats[:, 3], r"$\phi - \hat\phi$"
-        mask = (PI < phi_mask) & (abs(PJ) < phi_mask)
-        data = np.ma.array(data, mask=mask)
-        plt.pcolormesh(pixel_i, pixel_j, data.reshape(len(pixel_i), len(pixel_j)))
+        data = np.ma.array(data, mask=(stats[:, 5] == 0))
+        data = data.reshape(len(pixel_i), len(pixel_j))
+        #mask = (PI < phi_mask) & (abs(PJ) < phi_mask)
+        plt.pcolormesh(pixel_i, pixel_j, data)
         plt.grid(True)
         plt.axis('equal')
         plt.title(title)
@@ -662,11 +704,13 @@ def pinhole(pixel_i, pixel_j, pixel_width=5, pixel_height=5,
         plt.subplot(133)
         #data, title = stats[:, 8], r"$\Delta q$"
         data, title = stats[:, 8]/stats[:, 6], r"$\Delta q/q$"
-        mask = (PI**2+PJ**2 < phi_mask**2)
-        data = np.ma.array(data, mask=mask)
+        data = np.ma.array(data, mask=(stats[:, 8] == 0))
+        data = data.reshape(len(pixel_i), len(pixel_j))
+        #mask = (PI**2+PJ**2 < phi_mask**2)
+        #data = np.ma.array(data, mask=mask)
         #data, title = stats[:, 7]-stats[:, 6], r"$q - \hat q$"
         #data = np.clip(stats[:, 7]-stats[:, 6], 0, 0.0005)
-        plt.pcolormesh(pixel_i, pixel_j, data.reshape(len(pixel_i), len(pixel_j)))
+        plt.pcolormesh(pixel_i, pixel_j, data)
         plt.grid(True)
         plt.axis('equal')
         plt.title(title)
@@ -710,8 +754,10 @@ if __name__ == "__main__":
               "wavelength", "wavelength_resolution")
     values = (
         #16270, 13170, 28.6, 25.4, 50.8, 13, 0.109  # 13m @ 13A max resolution
+        #16270, 13170, 28.6, 25.4, 50.8, 13, 0.25  # 13m @ 13A 25% dL/L
+        16270, 13170, 50.0, 25.4, 50.8, 13, 0.25  # 13m @ 13A 25% dL/L divergent
         #15727, 14547, 76.0, 25.4, 50.8, 6, 0.124  # 14.5m @ 6A low Q
-        6959, 4000, 50.8, 9.5, 50.8, 6, 0.145  # 4m @ 6A on NG7
+        #6959, 4000, 50.8, 9.5, 50.8, 6, 0.145  # 4m @ 6A on NG7
         #13125, 13000, 50.8, 49.5, 101.6, 6, 0.14  # 13m @ 6A on NG7
         #10070, 4050, 100.0, 25.4, 50.8, 8, 0.125  # 4m @ 8A
         #10070, 4050, 100.0, 50.9, 87.5, 8, 0.125  # 4m @ 8A; very bad res
@@ -741,9 +787,9 @@ if __name__ == "__main__":
     # ==== select detector portion
     if 0:
         # various detector regions
-        #i=j=np.arange(-63.5, 64) # full detector SLOW!!!
-        #i=j=np.arange(-63.5, 64, 4) # down sampled
-        i, j = np.arange(6, 64), [0] # horizontal line
+        #i = j = np.arange(-63.5, 64) # full detector SLOW!!!
+        i = j = np.arange(-63.5, 64, 8) # down sampled
+        #i, j = np.arange(6, 64), [0] # horizontal line
         #i, j = [0], np.arange(3.5, 64) # vertical line
         #i, j = [6], [6]  # low Q point
         #i, j = [45], [45]  # high Q point
@@ -764,9 +810,9 @@ if __name__ == "__main__":
         #plt.figure(); pinhole([6], [0], N=N, **geom)
         #plt.figure(); pinhole([9], [0], N=N, **geom)
         #plt.figure(); pinhole([10], [0], N=N, **geom)
-        plt.figure(); pinhole([20], [0], N=N, **geom)
+        #plt.figure(); pinhole([20], [0], N=N, **geom)
         #plt.figure(); pinhole([40], [0], N=N, **geom)
-        plt.figure(); pinhole([60], [0], N=N, **geom)
+        #plt.figure(); pinhole([60], [0], N=N, **geom)
         #plt.figure(); pinhole([0], [p_min], N=N, **geom)
         #plt.figure(); pinhole([0], [20], N=N, **geom)
         #plt.figure(); pinhole([0], [60], N=N, **geom)
